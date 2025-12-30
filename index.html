@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Switcher</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
+</head>
+<body>
+    <div class="container">
+        <h1>Device Controller</h1>
+        
+        <div class="status" id="status">Ready</div>
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="controls">Controls</button>
+            <button class="tab-btn" data-tab="inputs">Input States</button>
+            <button class="tab-btn" data-tab="interconnection">Interconnection</button>
+        </div>
+
+        <!-- Controls Page -->
+        <div id="controlsPage" class="page active">
+            <div class="master-control">
+                <div class="master-control-container">
+                    <span class="master-control-label">All Devices</span>
+                    <label class="switch">
+                        <input type="checkbox" id="masterToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div id="switchesContainer" class="switches-container">
+                <!-- Switches will be dynamically loaded here -->
+            </div>
+        </div>
+
+        <!-- Inputs Page -->
+        <div id="inputsPage" class="page">
+            <div class="inputs-section">
+                <div id="inputsContainer" class="inputs-container">
+                    <!-- Input states will be displayed here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Interconnection Page -->
+        <div id="interconnectionPage" class="page">
+            <div class="interconnection-section">
+                <div id="interconnectionContainer" class="interconnection-container">
+                    <!-- Interconnection matrix will be visualized here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="response-section">
+            <h3>Response:</h3>
+            <pre id="response">No response yet</pre>
+        </div>
+    </div>
+
+    <!-- Emoji Picker Modal -->
+    <div id="emojiPickerModal" class="emoji-modal">
+        <div class="emoji-modal-content">
+            <div class="emoji-modal-header">
+                <h3>Choose Group Icon</h3>
+                <button class="emoji-close-btn">&times;</button>
+            </div>
+            <div class="emoji-categories">
+                <button class="emoji-category-btn active" data-category="home">🏠 Home</button>
+                <button class="emoji-category-btn" data-category="lights">💡 Lights</button>
+                <button class="emoji-category-btn" data-category="electronics">📺 Electronics</button>
+                <button class="emoji-category-btn" data-category="comfort">🌡️ Comfort</button>
+                <button class="emoji-category-btn" data-category="security">🔒 Security</button>
+                <button class="emoji-category-btn" data-category="symbols">⭐ Symbols</button>
+            </div>
+            <div class="emoji-grid" id="emojiGrid">
+                <!-- Emojis will be dynamically loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

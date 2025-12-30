@@ -1,0 +1,138 @@
+[
+    {
+        "name": "Přízemí",
+        "ip": "192.168.1.166",
+        "wifiName": "Jajtnerovi",
+        "devices": [
+            {
+                "number": 0,
+                "name": "Chodba prizemi",
+                "group": "Prizemi"
+            },
+            {
+                "number": 15,
+                "name": "Pracovna",
+                "group": "Pracovna"
+            },
+            {
+                "number": 14,
+                "name": "Kuchyn ostruvek",
+                "group": "Prizemi"
+            },
+            {
+                "number": 13,
+                "name": "Jidelna",
+                "group": "Prizemi"
+            },
+            {
+                "number": 12,
+                "name": "Podium",
+                "group": "Prizemi"
+            },
+            {
+                "number": 10,
+                "name": "Obývák backlight",
+                "group": "Prizemi"
+            },
+            {
+                "number": 9,
+                "name": "Obývák lustr",
+                "group": "Prizemi"
+            },
+            {
+                "number": 8,
+                "name": "Venkovní štít",
+                "group": "Venkovni"
+            },
+            {
+                "number": 3,
+                "name": "Venkovní atrium",
+                "group": "Venkovni"
+            },
+            {
+                "number": 4,
+                "name": "Pracovna stůl",
+                "group": "Pracovna"
+            }
+        ]
+    },
+    {
+        "name": "Vstup",
+        "ip": "192.168.1.167",
+        "wifiName": "Jajtnerovi",
+        "devices": [
+            {
+                "number": 10,
+                "name": "Koupelna",
+                "group": "Koupelna"
+            },
+            {
+                "number": 3,
+                "name": "Vana",
+                "group": "Koupelna"
+            },
+            {
+                "number": 4,
+                "name": "Předsíň",
+                "group": "Sever"
+            },
+            {
+                "number": 5,
+                "name": "Vstup",
+                "group": "Sever"
+            },
+            {
+                "number": 2,
+                "name": "Prádelna",
+                "group": "Sever"
+            }
+        ]
+    },
+    {
+        "name": "Patro",
+        "ip": "192.168.1.165",
+        "wifiName": "Jajtnerovi",
+        "devices": [
+            {
+                "number": 4,
+                "name": "Chodba",
+                "group": "Společné"
+            },
+            {
+                "number": 8,
+                "name": "Schody",
+                "group": "Společné"
+            },
+            {
+                "number": 12,
+                "name": "Zrcadlo",
+                "group": "Koupelna"
+            },
+            {
+                "number": 5,
+                "name": "Koupelna",
+                "group": "Koupelna"
+            },
+            {
+                "number": 10,
+                "name": "Kluci",
+                "group": "Pokoje"
+            },
+            {
+                "number": 14,
+                "name": "Holky",
+                "group": "Pokoje"
+            },
+            {
+                "number": 7,
+                "name": "Ložnice",
+                "group": "Ložnice"
+            },
+            {
+                "number": 3,
+                "name": "Noční stolek",
+                "group": "Ložnice"
+            }
+        ]
+    }
+]

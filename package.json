@@ -1,0 +1,17 @@
+{
+  "name": "device-switcher",
+  "version": "1.0.0",
+  "description": "Web app to control devices on local network",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "device-controller",
+    "local-network",
+    "web-app"
+  ],
+  "author": "",
+  "license": "MIT"
+}

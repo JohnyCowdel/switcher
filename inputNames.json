@@ -1,0 +1,24 @@
+{
+    "192.168.1.166": {
+        "0": "SerieObyvak2",
+        "1": "SerieObyvak5",
+        "3": "ObyvakJih3",
+        "4": "ObyvakJih2",
+        "5": "SerieObyvak3",
+        "6": "VstupPracovnaPravy",
+        "7": "KuchynJihozapadPravy",
+        "8": "KuchynJihozapadLevy",
+        "9": "KuchynSeverozapadLevy",
+        "10": "KuchynSeverozapadPravy",
+        "11": "ZrcadloPredsinLevy",
+        "14": "SerieObyvak4",
+        "15": "ObyvakJih1",
+        "17": "PracovnaLevy",
+        "18": "SerieObyvak6",
+        "19": "SerieObyvak1",
+        "21": "PracovnaPravy",
+        "23": "VstupPracovnaLevy"
+    },
+    "192.168.1.167": {},
+    "192.168.1.165": {}
+}
