@@ -9,6 +9,7 @@ let previousInputStates = {};
 let inputSectionsCreated = false;
 let inputNames = {};
 let groupSettings = {}; // Store emoji/icon for each group
+let bookmarks = { devices: [], groups: [], customGroups: [] }; // Store bookmarked items
 let interconnectionSectionsCreated = false;
 let recentlyToggledDevices = new Set(); // Track recently toggled devices to prevent state override
 let recentlyToggledGroups = new Set(); // Track recently toggled groups to prevent state override
@@ -49,7 +50,14 @@ async function loadDevices() {
         // Load group settings
         await loadGroupSettings();
         
+        // Load bookmarks
+        await loadBookmarks();
+        
+        // Load custom groups (needed for bookmarked section)
+        await loadCustomGroups();
+        
         createSwitches();
+        createBookmarkedSection();
         
         // Check connectivity in background (non-blocking)
         checkAllIPConnectivity();
@@ -101,6 +109,325 @@ async function loadGroupSettings() {
         console.error('Error loading group settings:', error);
         groupSettings = {};
     }
+}
+
+// Load bookmarks from JSON file
+async function loadBookmarks() {
+    try {
+        const response = await fetch('bookmarks.json');
+        bookmarks = await response.json();
+        if (!bookmarks.customGroups) {
+            bookmarks.customGroups = [];
+        }
+    } catch (error) {
+        console.error('Error loading bookmarks:', error);
+        bookmarks = { devices: [], groups: [], customGroups: [] };
+    }
+}
+
+// Save bookmarks to JSON file
+async function saveBookmarks() {
+    try {
+        const response = await fetch('/save-bookmarks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(bookmarks)
+        });
+        
+        if (response.ok) {
+            console.log('Bookmarks saved successfully');
+        } else {
+            console.error('Failed to save bookmarks, status:', response.status);
+        }
+    } catch (error) {
+        console.error('Error saving bookmarks:', error);
+    }
+}
+
+// Toggle device bookmark
+function toggleDeviceBookmark(ip, number) {
+    const index = bookmarks.devices.findIndex(d => d.ip === ip && d.number === number);
+    
+    if (index === -1) {
+        // Add bookmark
+        bookmarks.devices.push({ ip, number });
+    } else {
+        // Remove bookmark
+        bookmarks.devices.splice(index, 1);
+    }
+    
+    saveBookmarks();
+    createSwitches();
+    createBookmarkedSection();
+}
+
+// Toggle group bookmark
+function toggleGroupBookmark(ip, groupName) {
+    const index = bookmarks.groups.findIndex(g => g.ip === ip && g.groupName === groupName);
+    
+    if (index === -1) {
+        // Add bookmark
+        bookmarks.groups.push({ ip, groupName });
+    } else {
+        // Remove bookmark
+        bookmarks.groups.splice(index, 1);
+    }
+    
+    saveBookmarks();
+    createSwitches();
+    createBookmarkedSection();
+}
+
+// Toggle custom group bookmark
+function toggleCustomGroupBookmark(groupName) {
+    if (!bookmarks.customGroups) {
+        bookmarks.customGroups = [];
+    }
+    
+    const index = bookmarks.customGroups.findIndex(g => g.name === groupName);
+    
+    if (index === -1) {
+        // Add bookmark
+        bookmarks.customGroups.push({ name: groupName });
+    } else {
+        // Remove bookmark
+        bookmarks.customGroups.splice(index, 1);
+    }
+    
+    saveBookmarks();
+    createCustomGroupsInterface();
+    createBookmarkedSection();
+}
+
+// Create bookmarked section
+function createBookmarkedSection() {
+    const bookmarkedContainer = document.getElementById('bookmarkedContainer');
+    if (!bookmarkedContainer) return;
+    
+    bookmarkedContainer.innerHTML = '';
+    
+    // Check if there are any bookmarks
+    const hasBookmarks = bookmarks.devices.length > 0 || bookmarks.groups.length > 0 || (bookmarks.customGroups && bookmarks.customGroups.length > 0);
+    if (!hasBookmarks) {
+        bookmarkedContainer.innerHTML = '<p class="no-bookmarks">No bookmarked items. Click the ★ icon on any switch or group to add it here.</p>';
+        return;
+    }
+    
+    // Add bookmarked groups
+    bookmarks.groups.forEach(bookmark => {
+        const groupDevices = devices.filter(d => d.ip === bookmark.ip && d.group === bookmark.groupName);
+        if (groupDevices.length === 0) {
+            console.log('No devices found for group:', bookmark.groupName, 'at IP:', bookmark.ip);
+            return;
+        }
+        
+        const groupContainer = document.createElement('div');
+        groupContainer.className = 'bookmarked-group';
+        
+        const groupKey = `${bookmark.ip}:${bookmark.groupName}`;
+        const groupEmoji = groupSettings[groupKey] || '🎨';
+        
+        const groupHeader = document.createElement('div');
+        groupHeader.className = 'bookmarked-group-header';
+        groupHeader.innerHTML = `
+            <span class="group-emoji">${groupEmoji}</span>
+            <span class="group-title">${bookmark.groupName}</span>
+            <span class="bookmarked-group-toggle">▼</span>
+            <label class="switch">
+                <input type="checkbox" class="group-toggle" data-group="${bookmark.groupName}" data-ip="${bookmark.ip}">
+                <span class="slider"></span>
+            </label>
+        `;
+        
+        groupContainer.appendChild(groupHeader);
+        
+        const devicesContainer = document.createElement('div');
+        devicesContainer.className = 'bookmarked-devices collapsed';
+        
+        groupDevices.forEach(device => {
+            const deviceItem = document.createElement('div');
+            deviceItem.className = 'bookmarked-device-item';
+            
+            if (device.triggerButton) {
+                deviceItem.innerHTML = `
+                    <span class="device-name-text">${device.name}</span>
+                    <button class="trigger-btn" data-number="${device.number}" data-ip="${bookmark.ip}" data-group="${bookmark.groupName}">Trigger</button>
+                `;
+            } else {
+                deviceItem.innerHTML = `
+                    <span class="device-name-text">${device.name}</span>
+                    <label class="switch">
+                        <input type="checkbox" data-number="${device.number}" data-ip="${bookmark.ip}" data-group="${bookmark.groupName}">
+                        <span class="slider"></span>
+                    </label>
+                `;
+            }
+            
+            devicesContainer.appendChild(deviceItem);
+        });
+        
+        groupContainer.appendChild(devicesContainer);
+        bookmarkedContainer.appendChild(groupContainer);
+        
+        // Add toggle functionality for group
+        const groupToggle = groupHeader.querySelector('.group-toggle');
+        groupToggle.addEventListener('change', () => handleGroupToggle(bookmark.groupName, groupDevices, groupToggle));
+        
+        // Add collapse/expand functionality
+        const toggleBtn = groupHeader.querySelector('.bookmarked-group-toggle');
+        groupHeader.addEventListener('click', (e) => {
+            if (e.target === groupToggle || e.target.closest('.switch')) return;
+            devicesContainer.classList.toggle('collapsed');
+            toggleBtn.textContent = devicesContainer.classList.contains('collapsed') ? '▼' : '▲';
+        });
+        
+        // Add event listeners for individual switches and triggers
+        devicesContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            const deviceNumber = parseInt(checkbox.dataset.number);
+            const deviceIp = checkbox.dataset.ip;
+            const device = groupDevices.find(d => d.number === deviceNumber && d.ip === deviceIp);
+            if (device) {
+                checkbox.addEventListener('change', () => handleToggle(device, checkbox));
+            }
+        });
+        
+        devicesContainer.querySelectorAll('.trigger-btn').forEach(btn => {
+            const deviceNumber = parseInt(btn.dataset.number);
+            const deviceIp = btn.dataset.ip;
+            const device = groupDevices.find(d => d.number === deviceNumber && d.ip === deviceIp);
+            if (device) {
+                btn.addEventListener('click', () => handleTrigger(device, btn));
+            }
+        });
+    });
+    
+    // Add bookmarked custom groups
+    if (bookmarks.customGroups) {
+        bookmarks.customGroups.forEach(bookmark => {
+            const group = customGroups.find(g => g.name === bookmark.name);
+            if (!group) return;
+            
+            const groupContainer = document.createElement('div');
+            groupContainer.className = 'bookmarked-group';
+            
+            const groupHeader = document.createElement('div');
+            groupHeader.className = 'bookmarked-group-header';
+            groupHeader.innerHTML = `
+                <span class="group-emoji">⚙️</span>
+                <span class="group-title">${group.name}</span>
+                <span class="bookmarked-group-toggle">▼</span>
+                <label class="switch">
+                    <input type="checkbox" class="custom-group-toggle-input" data-group-name="${group.name}">
+                    <span class="slider"></span>
+                </label>
+            `;
+            
+            groupContainer.appendChild(groupHeader);
+            
+            const devicesContainer = document.createElement('div');
+            devicesContainer.className = 'bookmarked-devices collapsed';
+            
+            group.devices.forEach(deviceRef => {
+                const device = devices.find(d => d.ip === deviceRef.ip && d.number === deviceRef.number);
+                if (!device) return;
+                
+                const deviceItem = document.createElement('div');
+                deviceItem.className = 'bookmarked-device-item';
+                
+                if (device.triggerButton) {
+                    deviceItem.innerHTML = `
+                        <span class="device-name-text">${device.name}</span>
+                        <button class="trigger-btn" data-number="${device.number}" data-ip="${deviceRef.ip}">Trigger</button>
+                    `;
+                } else {
+                    deviceItem.innerHTML = `
+                        <span class="device-name-text">${device.name}</span>
+                        <label class="switch">
+                            <input type="checkbox" data-number="${device.number}" data-ip="${deviceRef.ip}">
+                            <span class="slider"></span>
+                        </label>
+                    `;
+                }
+                
+                devicesContainer.appendChild(deviceItem);
+            });
+            
+            groupContainer.appendChild(devicesContainer);
+            bookmarkedContainer.appendChild(groupContainer);
+            
+            // Add toggle functionality for custom group
+            const groupToggle = groupHeader.querySelector('.custom-group-toggle-input');
+            groupToggle.addEventListener('change', () => {
+                handleCustomGroupToggle(group, groupToggle.checked);
+            });
+            
+            // Add collapse/expand functionality
+            const toggleBtn = groupHeader.querySelector('.bookmarked-group-toggle');
+            groupHeader.addEventListener('click', (e) => {
+                if (e.target === groupToggle || e.target.closest('.switch')) return;
+                devicesContainer.classList.toggle('collapsed');
+                toggleBtn.textContent = devicesContainer.classList.contains('collapsed') ? '▼' : '▲';
+            });
+            
+            // Add event listeners for individual switches and triggers
+            devicesContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                const deviceNumber = parseInt(checkbox.dataset.number);
+                const deviceIp = checkbox.dataset.ip;
+                const device = devices.find(d => d.number === deviceNumber && d.ip === deviceIp);
+                if (device) {
+                    checkbox.addEventListener('change', () => handleToggle(device, checkbox));
+                }
+            });
+            
+            devicesContainer.querySelectorAll('.trigger-btn').forEach(btn => {
+                const deviceNumber = parseInt(btn.dataset.number);
+                const deviceIp = btn.dataset.ip;
+                const device = devices.find(d => d.number === deviceNumber && d.ip === deviceIp);
+                if (device) {
+                    btn.addEventListener('click', () => handleTrigger(device, btn));
+                }
+            });
+        });
+    }
+    
+    // Add bookmarked individual devices
+    bookmarks.devices.forEach(bookmark => {
+        const device = devices.find(d => d.ip === bookmark.ip && d.number === bookmark.number);
+        if (!device) return;
+        
+        const deviceItem = document.createElement('div');
+        deviceItem.className = 'bookmarked-device-item standalone';
+        
+        if (device.triggerButton) {
+            deviceItem.innerHTML = `
+                <span class="device-name-text">${device.name}</span>
+                <button class="trigger-btn" data-number="${device.number}" data-ip="${bookmark.ip}">Trigger</button>
+            `;
+        } else {
+            deviceItem.innerHTML = `
+                <span class="device-name-text">${device.name}</span>
+                <label class="switch">
+                    <input type="checkbox" data-number="${device.number}" data-ip="${bookmark.ip}">
+                    <span class="slider"></span>
+                </label>
+            `;
+        }
+        
+        bookmarkedContainer.appendChild(deviceItem);
+        
+        // Add event listeners
+        const checkbox = deviceItem.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.addEventListener('change', () => handleToggle(device, checkbox));
+        }
+        
+        const triggerBtn = deviceItem.querySelector('.trigger-btn');
+        if (triggerBtn) {
+            triggerBtn.addEventListener('click', () => handleTrigger(device, triggerBtn));
+        }
+    });
 }
 
 // Save group settings to JSON file
@@ -287,13 +614,14 @@ function createSwitches() {
             
             // Get emoji for this group
             const groupKey = `${ip}:${groupName}`;
-            const groupEmoji = groupSettings[groupKey] || '';
+            const groupEmoji = groupSettings[groupKey] || '🎨';
+            const isGroupBookmarked = bookmarks.groups.some(g => g.ip === ip && g.groupName === groupName);
             
             groupHeader.innerHTML = `
                 <div class="group-title-container">
-                    <span class="group-emoji" data-group-key="${groupKey}">${groupEmoji}</span>
+                    <span class="group-emoji clickable-emoji" data-group-key="${groupKey}" data-group-name="${groupName}" title="Change icon">${groupEmoji}</span>
                     <span class="group-title">${groupName}</span>
-                    <button class="edit-group-emoji-btn" data-group-key="${groupKey}" data-group-name="${groupName}" title="Choose icon">🎨</button>
+                    <button class="bookmark-icon ${isGroupBookmarked ? 'bookmarked' : ''}" data-type="group" data-ip="${ip}" data-group-name="${groupName}" title="Bookmark">★</button>
                     <label class="switch">
                         <input type="checkbox" class="group-toggle" data-group="${groupName}" data-ip="${ip}">
                         <span class="slider"></span>
@@ -307,9 +635,16 @@ function createSwitches() {
             const groupToggle = groupHeader.querySelector('.group-toggle');
             groupToggle.addEventListener('change', () => handleGroupToggle(groupName, groupDevices, groupToggle));
             
-            // Add event listener for emoji edit button
-            const emojiEditBtn = groupHeader.querySelector('.edit-group-emoji-btn');
-            emojiEditBtn.addEventListener('click', (e) => {
+            // Add event listener for bookmark button
+            const bookmarkBtn = groupHeader.querySelector('.bookmark-icon');
+            bookmarkBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleGroupBookmark(ip, groupName);
+            });
+            
+            // Add event listener for emoji click
+            const emojiSpan = groupHeader.querySelector('.group-emoji');
+            emojiSpan.addEventListener('click', (e) => {
                 e.stopPropagation();
                 openEmojiPicker(groupKey, groupName);
             });
@@ -322,29 +657,70 @@ function createSwitches() {
                 const switchItem = document.createElement('div');
                 switchItem.className = 'switch-item';
                 
-                switchItem.innerHTML = `
-                    <div class="switch-info">
-                        <span class="device-name editable-device-name" contenteditable="false" data-device-number="${device.number}" data-device-ip="${device.ip}">${device.name}</span>
-                        <button class="edit-device-btn" title="Edit device name">✏️</button>
-                        <input type="number" class="device-number-input" value="${device.number}" min="0" max="23" data-original-number="${device.number}" data-device-ip="${device.ip}" title="Device number">
-                        <label class="switch">
-                            <input type="checkbox" data-number="${device.number}" data-ip="${device.ip}" data-group="${groupName}">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                `;
+                const isDeviceBookmarked = bookmarks.devices.some(d => d.ip === ip && d.number === device.number);
+                
+                // Check if device is a trigger button
+                if (device.triggerButton) {
+                    switchItem.innerHTML = `
+                        <div class="switch-info">
+                            <button class="bookmark-icon ${isDeviceBookmarked ? 'bookmarked' : ''}" data-type="device" data-ip="${ip}" data-number="${device.number}" title="Bookmark">★</button>
+                            <span class="device-name editable-device-name" contenteditable="false" data-device-number="${device.number}" data-device-ip="${device.ip}"><span class="device-name-text">${device.name}</span></span>
+                            <button class="edit-device-btn" title="Edit device name">✏️</button>
+                            <input type="number" class="device-number-input" value="${device.number}" min="0" max="23" data-original-number="${device.number}" data-device-ip="${device.ip}" title="Device number">
+                            <button class="trigger-btn" data-number="${device.number}" data-ip="${device.ip}" data-group="${groupName}">Trigger</button>
+                        </div>
+                    `;
+                } else {
+                    switchItem.innerHTML = `
+                        <div class="switch-info">
+                            <button class="bookmark-icon ${isDeviceBookmarked ? 'bookmarked' : ''}" data-type="device" data-ip="${ip}" data-number="${device.number}" title="Bookmark">★</button>
+                            <span class="device-name editable-device-name" contenteditable="false" data-device-number="${device.number}" data-device-ip="${device.ip}"><span class="device-name-text">${device.name}</span></span>
+                            <button class="edit-device-btn" title="Edit device name">✏️</button>
+                            <input type="number" class="device-number-input" value="${device.number}" min="0" max="23" data-original-number="${device.number}" data-device-ip="${device.ip}" title="Device number">
+                            <label class="switch">
+                                <input type="checkbox" data-number="${device.number}" data-ip="${device.ip}" data-group="${groupName}">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    `;
+                }
                 
                 devicesContainer.appendChild(switchItem);
                 
+                // Add event listener for bookmark button
+                const bookmarkBtn = switchItem.querySelector('.bookmark-icon');
+                bookmarkBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleDeviceBookmark(ip, device.number);
+                });
+                
                 // Add edit functionality for device name
                 const deviceNameSpan = switchItem.querySelector('.device-name');
+                const deviceNameTextSpan = switchItem.querySelector('.device-name-text');
                 const editBtn = switchItem.querySelector('.edit-device-btn');
                 const numberInput = switchItem.querySelector('.device-number-input');
+                
+                // Check if text needs scrolling
+                const checkDeviceNameScrolling = () => {
+                    if (deviceNameSpan.contentEditable === 'false') {
+                        const textWidth = deviceNameTextSpan.offsetWidth;
+                        const containerWidth = deviceNameSpan.offsetWidth;
+                        if (textWidth > containerWidth) {
+                            deviceNameSpan.classList.add('scrolling');
+                        } else {
+                            deviceNameSpan.classList.remove('scrolling');
+                        }
+                    }
+                };
+                
+                // Initial check
+                setTimeout(checkDeviceNameScrolling, 100);
                 
                 editBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     if (deviceNameSpan.contentEditable === 'false') {
                         // Enter edit mode
+                        deviceNameSpan.classList.remove('scrolling');
                         deviceNameSpan.contentEditable = 'true';
                         deviceNameSpan.focus();
                         editBtn.textContent = '✓';
@@ -370,6 +746,9 @@ function createSwitches() {
                             // Restore original if empty
                             deviceNameSpan.textContent = device.name;
                         }
+                        
+                        // Re-check if scrolling is needed after save
+                        setTimeout(checkDeviceNameScrolling, 100);
                     }
                 });
                 
@@ -386,6 +765,7 @@ function createSwitches() {
                         deviceNameSpan.textContent = device.name;
                         editBtn.textContent = '✏️';
                         editBtn.title = 'Edit device name';
+                        checkDeviceNameScrolling();
                     }
                 });
                 
@@ -419,9 +799,14 @@ function createSwitches() {
                     device.number = newNumber;
                     e.target.dataset.originalNumber = newNumber;
                     
-                    // Update the toggle checkbox data attribute
+                    // Update the toggle checkbox or trigger button data attribute
                     const toggle = switchItem.querySelector('input[type="checkbox"]');
-                    toggle.dataset.number = newNumber;
+                    const triggerBtn = switchItem.querySelector('.trigger-btn');
+                    if (toggle) {
+                        toggle.dataset.number = newNumber;
+                    } else if (triggerBtn) {
+                        triggerBtn.dataset.number = newNumber;
+                    }
                     
                     // Save to JSON
                     saveDevicesJson();
@@ -432,9 +817,18 @@ function createSwitches() {
                     }, 500);
                 });
                 
-                // Add event listener to the switch
-                const toggle = switchItem.querySelector('input[type="checkbox"]');
-                toggle.addEventListener('change', () => handleToggle(device, toggle));
+                // Add event listener to the switch or trigger button
+                if (device.triggerButton) {
+                    const triggerBtn = switchItem.querySelector('.trigger-btn');
+                    if (triggerBtn) {
+                        triggerBtn.addEventListener('click', () => handleTrigger(device, triggerBtn));
+                    }
+                } else {
+                    const toggle = switchItem.querySelector('input[type="checkbox"]');
+                    if (toggle) {
+                        toggle.addEventListener('change', () => handleToggle(device, toggle));
+                    }
+                }
             });
             
             groupContainer.appendChild(devicesContainer);
@@ -970,6 +1364,79 @@ async function handleToggle(device, toggle) {
     }
 }
 
+// Handle trigger button - sends both ON and OFF signals in sequence
+async function handleTrigger(device, button) {
+    button.disabled = true;
+    updateStatus('Triggering...', 'info');
+    
+    // Mark this device as recently toggled to prevent state polling interference
+    const deviceKey = `${device.ip}:${device.number}`;
+    recentlyToggledDevices.add(deviceKey);
+    
+    // Pause state polling during trigger
+    stopStatePolling();
+    
+    try {
+        // Send ON signal
+        const onCommand = `/genericArgs?z=${device.number}`;
+        const onResponse = await fetch(`/proxy/command?ip=${device.ip}&cmd=${encodeURIComponent(onCommand)}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json, text/plain, */*'
+            }
+        });
+
+        if (!onResponse.ok) {
+            throw new Error(`ON command failed: ${onResponse.status}`);
+        }
+
+        // Wait a bit before sending OFF signal
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Send OFF signal
+        const offCommand = `/genericArgs?v=${device.number}`;
+        const offResponse = await fetch(`/proxy/command?ip=${device.ip}&cmd=${encodeURIComponent(offCommand)}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json, text/plain, */*'
+            }
+        });
+
+        if (!offResponse.ok) {
+            throw new Error(`OFF command failed: ${offResponse.status}`);
+        }
+
+        const contentType = offResponse.headers.get('content-type');
+        let data;
+        
+        if (contentType && contentType.includes('application/json')) {
+            data = await offResponse.json();
+            responseDiv.textContent = JSON.stringify(data, null, 2);
+        } else {
+            data = await offResponse.text();
+            responseDiv.textContent = data;
+        }
+
+        updateStatus(`${device.name} triggered!`, 'success');
+    } catch (error) {
+        console.error('Error:', error);
+        responseDiv.textContent = `Error: ${error.message}\n\nNote: Make sure the device is reachable on your local network.`;
+        updateStatus('Trigger failed', 'error');
+    } finally {
+        button.disabled = false;
+        
+        // Resume state polling after 1 second delay
+        setTimeout(() => {
+            startStatePolling();
+        }, 1000);
+        
+        // Remove from recently toggled after 3 seconds
+        setTimeout(() => {
+            recentlyToggledDevices.delete(deviceKey);
+        }, 3000);
+    }
+}
+
 // Load devices on page load
 loadDevices();
 
@@ -1214,30 +1681,9 @@ async function createInterconnectionSections() {
     }
 }
 
-// Tab switching
-document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const tabName = btn.dataset.tab;
-        
-        // Update active tab button
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        
-        // Update active page
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById(tabName + 'Page').classList.add('active');
-        
-        // Load interconnection data when switching to that tab
-        if (tabName === 'interconnection' && !interconnectionSectionsCreated) {
-            createInterconnectionSections();
-            interconnectionSectionsCreated = true;
-        }
-    });
-});
-
 // Emoji library organized by categories
 const emojiLibrary = {
-    home: ['🏠', '🏡', '🏢', '🏰', '🏛️', '🛋️', '🛏️', '🚪', '🪟', '🪑', '🛁', '🚿', '🧺', '🧹', '🧼', '🗝️'],
+    home: ['🏠', '🏡', '🏢', '🏰', '🏛️', '🛋️', '🛏️', '🚪', '🪟', '🪑', '🛁', '🚿', '🧺', '🧹', '🧼', '🗝️','🚿','🚽','🪠','🚿'],
     lights: ['💡', '🔦', '🕯️', '🪔', '💫', '✨', '⭐', '🌟', '💥', '🔅', '🔆', '☀️', '🌙', '🌛', '🌜', '🌝'],
     electronics: ['📺', '📻', '🖥️', '⌨️', '🖱️', '🖨️', '📱', '☎️', '📞', '📟', '📠', '🔌', '🔋', '💻', '⏰', '⏱️'],
     comfort: ['🌡️', '❄️', '🔥', '💨', '🌬️', '💧', '💦', '☁️', '⛅', '🌤️', '🌈', '🎵', '🎶', '🔊', '🔇', '📢'],
@@ -1313,6 +1759,17 @@ function selectEmoji(emoji) {
 
 // Set up emoji picker event listeners
 document.addEventListener('DOMContentLoaded', () => {
+    // Bookmarked section toggle
+    const toggleBookmarkedBtn = document.querySelector('.toggle-bookmarked-btn');
+    const bookmarkedContainer = document.getElementById('bookmarkedContainer');
+    
+    if (toggleBookmarkedBtn && bookmarkedContainer) {
+        toggleBookmarkedBtn.addEventListener('click', () => {
+            bookmarkedContainer.classList.toggle('collapsed');
+            toggleBookmarkedBtn.textContent = bookmarkedContainer.classList.contains('collapsed') ? '▼' : '▲';
+        });
+    }
+    
     // Close button
     const closeBtn = document.querySelector('.emoji-close-btn');
     if (closeBtn) {
@@ -1340,6 +1797,349 @@ document.addEventListener('DOMContentLoaded', () => {
             const category = btn.dataset.category;
             loadEmojiCategory(category);
         });
+    });
+});
+
+// Custom Groups functionality
+let customGroups = [];
+let currentEditingGroupIndex = null;
+
+// Load custom groups from JSON file
+async function loadCustomGroups() {
+    try {
+        const response = await fetch('customGroups.json');
+        customGroups = await response.json();
+    } catch (error) {
+        console.error('Error loading custom groups:', error);
+        customGroups = [];
+    }
+}
+
+// Save custom groups to JSON file
+async function saveCustomGroups() {
+    try {
+        console.log('Saving custom groups:', customGroups);
+        const response = await fetch('/save-custom-groups', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(customGroups)
+        });
+        
+        console.log('Save response status:', response.status);
+        const result = await response.text();
+        console.log('Save response:', result);
+        
+        if (response.ok) {
+            updateStatus('Custom groups saved!', 'success');
+        } else {
+            updateStatus(`Failed to save custom groups: ${response.status}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving custom groups:', error);
+        updateStatus(`Failed to save custom groups: ${error.message}`, 'error');
+    }
+}
+
+// Create custom groups interface
+function createCustomGroupsInterface() {
+    const customGroupsContainer = document.getElementById('customGroupsContainer');
+    
+    // Clear container
+    customGroupsContainer.innerHTML = '';
+    
+    // Display custom groups
+    if (customGroups.length === 0) {
+        customGroupsContainer.innerHTML = '<div class="empty-custom-group">No custom groups yet. Click "Create New Group" to get started!</div>';
+    } else {
+        customGroups.forEach((group, index) => {
+            const groupElement = createCustomGroupElement(group, index);
+            customGroupsContainer.appendChild(groupElement);
+        });
+    }
+}
+
+// Create custom group element
+function createCustomGroupElement(group, index) {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'custom-group';
+    groupDiv.dataset.groupIndex = index;
+    
+    const header = document.createElement('div');
+    header.className = 'custom-group-header';
+    
+    const deviceCount = group.devices.length;
+    const isCustomGroupBookmarked = bookmarks.customGroups && bookmarks.customGroups.some(g => g.name === group.name);
+    
+    header.innerHTML = `
+        <div class="custom-group-title">
+            <span class="custom-group-name">${group.name}</span>
+            <span class="device-count">(${deviceCount})</span>
+        </div>
+        <div class="custom-group-actions">
+            <button class="bookmark-icon ${isCustomGroupBookmarked ? 'bookmarked' : ''}" data-type="custom-group" data-group-name="${group.name}" title="Bookmark">★</button>
+            <button class="add-devices-btn">Edit</button>
+            <label class="switch custom-group-toggle">
+                <input type="checkbox" class="custom-group-toggle-input">
+                <span class="slider"></span>
+            </label>
+        </div>
+    `;
+    
+    groupDiv.appendChild(header);
+    
+    // Devices container
+    const devicesContainer = document.createElement('div');
+    devicesContainer.className = 'custom-group-devices';
+    
+    if (group.devices.length > 0) {
+        group.devices.forEach(deviceRef => {
+            const device = devices.find(d => d.ip === deviceRef.ip && d.number === deviceRef.number);
+            if (device) {
+                const deviceElement = createCustomDeviceElement(device, index);
+                devicesContainer.appendChild(deviceElement);
+            }
+        });
+    }
+    
+    groupDiv.appendChild(devicesContainer);
+    
+    // Event listeners
+    const toggleInput = header.querySelector('.custom-group-toggle-input');
+    const addDevicesBtn = header.querySelector('.add-devices-btn');
+    const bookmarkBtn = header.querySelector('.bookmark-icon');
+    
+    // Bookmark button
+    bookmarkBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleCustomGroupBookmark(group.name);
+    });
+    
+    // Toggle group
+    toggleInput.addEventListener('change', () => {
+        handleCustomGroupToggle(group, toggleInput.checked);
+    });
+    
+    // Edit devices button
+    addDevicesBtn.addEventListener('click', () => {
+        openDeviceSelection(index);
+    });
+    
+    return groupDiv;
+}
+
+// Open device selection panel
+function openDeviceSelection(groupIndex) {
+    currentEditingGroupIndex = groupIndex;
+    const group = customGroups[groupIndex];
+    const panel = document.getElementById('deviceSelectionPanel');
+    const container = document.getElementById('selectableDevicesContainer');
+    const nameInput = document.getElementById('editGroupNameInput');
+    
+    nameInput.value = group.name;
+    container.innerHTML = '';
+    
+    // Update group name on input change
+    nameInput.oninput = () => {
+        group.name = nameInput.value.trim() || group.name;
+    };
+    
+    // Create selectable device items
+    devices.forEach(device => {
+        const isSelected = group.devices.some(d => d.ip === device.ip && d.number === device.number);
+        
+        const deviceElement = document.createElement('div');
+        deviceElement.className = 'selectable-device-item' + (isSelected ? ' selected' : '');
+        deviceElement.dataset.deviceNumber = device.number;
+        deviceElement.dataset.deviceIp = device.ip;
+        
+        deviceElement.innerHTML = `
+            <div class="checkmark">${isSelected ? '✓' : ''}</div>
+            <div class="selectable-device-name">${device.name}</div>
+            <div class="selectable-device-location">${device.ipGroupName}<br>${device.group}</div>
+        `;
+        
+        deviceElement.addEventListener('click', () => toggleDeviceSelection(deviceElement, device, groupIndex));
+        
+        container.appendChild(deviceElement);
+    });
+    
+    panel.style.display = 'block';
+}
+
+// Toggle device selection
+function toggleDeviceSelection(element, device, groupIndex) {
+    const group = customGroups[groupIndex];
+    const isSelected = element.classList.contains('selected');
+    const checkmark = element.querySelector('.checkmark');
+    
+    if (isSelected) {
+        // Remove device
+        group.devices = group.devices.filter(d => !(d.ip === device.ip && d.number === device.number));
+        element.classList.remove('selected');
+        checkmark.textContent = '';
+    } else {
+        // Add device
+        group.devices.push({
+            ip: device.ip,
+            number: device.number
+        });
+        element.classList.add('selected');
+        checkmark.textContent = '✓';
+    }
+}
+
+// Close device selection panel
+document.querySelector('.close-selection-btn')?.addEventListener('click', () => {
+    document.getElementById('deviceSelectionPanel').style.display = 'none';
+    saveCustomGroups();
+    currentEditingGroupIndex = null;
+    createCustomGroupsInterface();
+});
+
+// Delete group from panel
+document.querySelector('.delete-group-in-panel-btn')?.addEventListener('click', () => {
+    if (currentEditingGroupIndex !== null) {
+        const group = customGroups[currentEditingGroupIndex];
+        if (confirm(`Delete custom group "${group.name}"?`)) {
+            customGroups.splice(currentEditingGroupIndex, 1);
+            document.getElementById('deviceSelectionPanel').style.display = 'none';
+            saveCustomGroups();
+            currentEditingGroupIndex = null;
+            createCustomGroupsInterface();
+        }
+    }
+});
+
+// Create custom device element
+function createCustomDeviceElement(device, groupIndex) {
+    const deviceDiv = document.createElement('div');
+    deviceDiv.className = 'custom-device-item';
+    deviceDiv.dataset.deviceNumber = device.number;
+    deviceDiv.dataset.deviceIp = device.ip;
+    
+    deviceDiv.innerHTML = `
+        <div class="custom-device-info">
+            <div class="custom-device-name">${device.name}</div>
+            <div class="custom-device-location">${device.ipGroupName} - ${device.group}</div>
+        </div>
+        <button class="remove-device-btn">Remove</button>
+    `;
+    
+    // Remove button
+    const removeBtn = deviceDiv.querySelector('.remove-device-btn');
+    removeBtn.addEventListener('click', () => {
+        const group = customGroups[groupIndex];
+        group.devices = group.devices.filter(d => !(d.ip === device.ip && d.number === device.number));
+        createCustomGroupsInterface();
+    });
+    
+    return deviceDiv;
+}
+
+// Handle custom group toggle
+async function handleCustomGroupToggle(group, targetState) {
+    const paramType = targetState ? 'z' : 'v';
+    
+    updateStatus(`Toggling ${group.name}...`, 'info');
+    
+    // Pause state polling during group toggle
+    stopStatePolling();
+    
+    // Toggle all devices in the custom group
+    const togglePromises = group.devices.map(deviceRef => {
+        const command = `/genericArgs?${paramType}=${deviceRef.number}`;
+        return fetch(`/proxy/command?ip=${deviceRef.ip}&cmd=${encodeURIComponent(command)}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json, text/plain, */*'
+            }
+        }).catch(error => {
+            console.error(`Error toggling device ${deviceRef.number} at ${deviceRef.ip}:`, error);
+        });
+    });
+    
+    await Promise.all(togglePromises);
+    
+    updateStatus(`${group.name} ${targetState ? 'ON' : 'OFF'}`, 'success');
+    
+    // Resume state polling after 1 second delay
+    setTimeout(() => {
+        startStatePolling();
+    }, 1000);
+}
+
+// Create new custom group
+document.querySelector('.create-custom-group-btn')?.addEventListener('click', () => {
+    const form = document.getElementById('newGroupForm');
+    const input = document.getElementById('newGroupNameInput');
+    
+    form.style.display = 'block';
+    input.value = '';
+    input.focus();
+});
+
+// Handle new group form save
+document.querySelector('.new-group-save-btn')?.addEventListener('click', () => {
+    const input = document.getElementById('newGroupNameInput');
+    const groupName = input.value.trim();
+    
+    if (groupName) {
+        customGroups.push({
+            name: groupName,
+            devices: []
+        });
+        saveCustomGroups();
+        createCustomGroupsInterface();
+        
+        // Hide form
+        document.getElementById('newGroupForm').style.display = 'none';
+    } else {
+        input.focus();
+    }
+});
+
+// Handle new group form cancel
+document.querySelector('.new-group-cancel-btn')?.addEventListener('click', () => {
+    document.getElementById('newGroupForm').style.display = 'none';
+});
+
+// Handle Enter key in new group input
+document.getElementById('newGroupNameInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        document.querySelector('.new-group-save-btn').click();
+    } else if (e.key === 'Escape') {
+        e.preventDefault();
+        document.querySelector('.new-group-cancel-btn').click();
+    }
+});
+
+// Tab switching - update to load custom groups
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const tabName = btn.dataset.tab;
+        
+        // Update active tab button
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        // Update active page
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(tabName + 'Page').classList.add('active');
+        
+        // Load custom groups when switching to that tab
+        if (tabName === 'custom') {
+            await loadCustomGroups();
+            createCustomGroupsInterface();
+        }
+        
+        // Load interconnection data when switching to that tab
+        if (tabName === 'interconnection' && !interconnectionSectionsCreated) {
+            createInterconnectionSections();
+            interconnectionSectionsCreated = true;
+        }
     });
 });
 

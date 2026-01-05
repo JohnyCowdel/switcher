@@ -17,8 +17,9 @@
         <!-- Tab Navigation -->
         <div class="tabs">
             <button class="tab-btn active" data-tab="controls">Controls</button>
-            <button class="tab-btn" data-tab="inputs">Input States</button>
-            <button class="tab-btn" data-tab="interconnection">Interconnection</button>
+            <button class="tab-btn" data-tab="custom">Custom</button>
+            <button class="tab-btn" data-tab="inputs">Inputs</button>
+            <button class="tab-btn" data-tab="interconnection">Interconnect</button>
         </div>
 
         <!-- Controls Page -->
@@ -33,6 +34,17 @@
                 </div>
             </div>
             
+            <!-- Bookmarked Section -->
+            <div id="bookmarkedSection" class="bookmarked-section">
+                <div class="bookmarked-header">
+                    <h3>⭐ Bookmarked</h3>
+                    <button class="toggle-bookmarked-btn">▼</button>
+                </div>
+                <div id="bookmarkedContainer" class="bookmarked-container">
+                    <!-- Bookmarked items will be displayed here -->
+                </div>
+            </div>
+            
             <div id="switchesContainer" class="switches-container">
                 <!-- Switches will be dynamically loaded here -->
             </div>
@@ -43,6 +55,45 @@
             <div class="inputs-section">
                 <div id="inputsContainer" class="inputs-container">
                     <!-- Input states will be displayed here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Groups Page -->
+        <div id="customPage" class="page">
+            <div class="custom-section">
+                <div class="custom-header">
+                    <button class="create-custom-group-btn">+ Create New Group</button>
+                </div>
+                
+                <!-- New Group Creation Form -->
+                <div id="newGroupForm" class="new-group-form" style="display: none;">
+                    <div class="new-group-form-content">
+                        <h3>Create New Group</h3>
+                        <input type="text" id="newGroupNameInput" class="new-group-input" placeholder="Enter group name..." />
+                        <div class="new-group-actions">
+                            <button class="new-group-save-btn">Create</button>
+                            <button class="new-group-cancel-btn">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="customGroupsContainer" class="custom-groups-container">
+                    <!-- Custom groups will be displayed here -->
+                </div>
+                
+                <!-- Device Selection Panel (shown only when editing) -->
+                <div id="deviceSelectionPanel" class="device-selection-panel" style="display: none;">
+                    <div class="device-selection-header">
+                        <input type="text" id="editGroupNameInput" class="edit-group-name-input" placeholder="Group name..." />
+                        <div class="device-selection-actions">
+                            <button class="delete-group-in-panel-btn">🗑️ Delete Group</button>
+                            <button class="close-selection-btn">Done</button>
+                        </div>
+                    </div>
+                    <div id="selectableDevicesContainer" class="selectable-devices-container">
+                        <!-- Selectable devices will be listed here -->
+                    </div>
                 </div>
             </div>
         </div>

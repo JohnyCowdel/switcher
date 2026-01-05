@@ -19,6 +19,18 @@
         "21": "PracovnaPravy",
         "23": "VstupPracovnaLevy"
     },
-    "192.168.1.167": {},
-    "192.168.1.165": {}
+    "192.168.1.167": {
+        "4": "KoupelnaLevy",
+        "5": "VstupPravy2",
+        "6": "VstupPravy1",
+        "8": "ZrcadloPredsin",
+        "9": "VstupLevy",
+        "10": "TechnickaPravy",
+        "13": "KoupelnaLevy",
+        "14": "GarážVstup1",
+        "15": "TechnickaLevy",
+        "19": "GarážVstup2"
+    },
+    "192.168.1.165": {},
+    "192.168.1.168": {}
 }

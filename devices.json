@@ -45,7 +45,7 @@
                 "group": "Venkovni"
             },
             {
-                "number": 3,
+                "number": 11,
                 "name": "Venkovní atrium",
                 "group": "Venkovni"
             },
@@ -132,6 +132,64 @@
                 "number": 3,
                 "name": "Noční stolek",
                 "group": "Ložnice"
+            }
+        ]
+    },
+    {
+        "name": "Garáž",
+        "ip": "192.168.1.168",
+        "wifiName": "Jajtnerovi",
+        "devices": [
+            {
+                "number": 0,
+                "name": "Garáž 1",
+                "group": "Garáž Hlavní"
+            },
+            {
+                "number": 2,
+                "name": "Garáž 2",
+                "group": "Garáž Hlavní"
+            },
+            {
+                "number": 5,
+                "name": "VenkovniVychod",
+                "group": "Venkovni"
+            },
+            {
+                "number": 6,
+                "name": "Garáž 3",
+                "group": "Garáž Hlavní"
+            },
+            {
+                "number": 7,
+                "name": "Garáž 4",
+                "group": "Garáž Hlavní"
+            },
+            {
+                "number": 8,
+                "name": "VenkovniJih",
+                "group": "Venkovni"
+            },
+            {
+                "number": 9,
+                "name": "Svetylka",
+                "group": "Venkovni"
+            },
+            {
+                "number": 12,
+                "name": "VenkovniSever",
+                "group": "Venkovni"
+            },
+            {
+                "number": 13,
+                "name": "Reflektory",
+                "group": "Venkovni"
+            },
+            {
+                "number": 15,
+                "name": "Vrata",
+                "group": "Vrata",
+                "triggerButton": true
             }
         ]
     }
