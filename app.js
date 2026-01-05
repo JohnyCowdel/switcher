@@ -1760,13 +1760,12 @@ function selectEmoji(emoji) {
 // Set up emoji picker event listeners
 document.addEventListener('DOMContentLoaded', () => {
     // Bookmarked section toggle
-    const toggleBookmarkedBtn = document.querySelector('.toggle-bookmarked-btn');
-    const bookmarkedContainer = document.getElementById('bookmarkedContainer');
+    const bookmarkedHeader = document.querySelector('.bookmarked-header');
+    const bookmarkedSection = document.getElementById('bookmarkedSection');
     
-    if (toggleBookmarkedBtn && bookmarkedContainer) {
-        toggleBookmarkedBtn.addEventListener('click', () => {
-            bookmarkedContainer.classList.toggle('collapsed');
-            toggleBookmarkedBtn.textContent = bookmarkedContainer.classList.contains('collapsed') ? '▼' : '▲';
+    if (bookmarkedHeader && bookmarkedSection) {
+        bookmarkedHeader.addEventListener('click', () => {
+            bookmarkedSection.classList.toggle('collapsed');
         });
     }
     

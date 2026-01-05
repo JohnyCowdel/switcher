@@ -167,20 +167,20 @@ h3 {
 
 /* Bookmarked Section */
 .bookmarked-section {
-    background: #fff;
+    margin-bottom: 30px;
     border: 3px solid #667eea;
     border-radius: 12px;
-    margin-bottom: 25px;
     overflow: hidden;
+    background: #fff;
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
 }
 
 .bookmarked-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 18px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 18px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     cursor: pointer;
     user-select: none;
     transition: background 0.3s ease;
@@ -191,10 +191,30 @@ h3 {
 }
 
 .bookmarked-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     margin: 0;
     color: white;
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 700;
+}
+
+.bookmarked-section .collapse-icon {
+    font-size: 16px;
+    color: white;
+    transition: transform 0.3s ease;
+}
+
+.bookmarked-section.collapsed .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+.bookmarked-star {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 20px;
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .toggle-bookmarked-btn {
@@ -204,6 +224,7 @@ h3 {
     cursor: pointer;
     color: white;
     transition: transform 0.3s ease;
+    display: none;
 }
 
 .bookmarked-section.collapsed .toggle-bookmarked-btn {
@@ -212,14 +233,17 @@ h3 {
 
 .bookmarked-container {
     padding: 15px 20px;
-    max-height: 1000px;
+    max-height: 5000px;
     overflow: hidden;
-    transition: max-height 0.3s ease, padding 0.3s ease;
+    transition: max-height 0.4s ease-out, opacity 0.3s ease-out;
+    opacity: 1;
 }
 
 .bookmarked-section.collapsed .bookmarked-container {
     max-height: 0;
     padding: 0 20px;
+    opacity: 0;
+    transition: max-height 0.3s ease-in, opacity 0.2s ease-in;
 }
 
 .no-bookmarks {
