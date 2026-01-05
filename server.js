@@ -1,10 +1,8 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { Bonjour } = require('bonjour-service');
 
 const PORT = 3000;
-const SERVICE_NAME = 'switcher';
 
 const mimeTypes = {
     '.html': 'text/html',
@@ -297,24 +295,11 @@ server.listen(PORT, () => {
         });
     });
 
-    // Start mDNS service
-    const bonjour = new Bonjour();
-    bonjour.publish({
-        name: SERVICE_NAME,
-        type: 'http',
-        port: PORT,
-        txt: {
-            description: 'Device Switcher Control Panel'
-        }
-    });
-
     console.log('='.repeat(50));
     console.log('Device Switcher Server Running!');
     console.log('='.repeat(50));
     console.log(`\nLocal:   http://localhost:${PORT}`);
     console.log(`Network: http://${localIP}:${PORT}`);
-    console.log(`mDNS:    http://${SERVICE_NAME}.local:${PORT}`);
     console.log('\nAccess from any device on your network!');
-    console.log('Use the mDNS address for easy access without remembering the IP.');
     console.log('Press Ctrl+C to stop the server\n');
 });
